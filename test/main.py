@@ -11,34 +11,22 @@ Created on Mar 22, 2016
 ############################ IMPORTS ############################ 
 ################################ ################################
 """ 
-
-import copy_reg
-
-import re
-import sys
+import shutil
 import numpy as np
 import pandas as pd
-from os import listdir, stat
-from os.path import isfile, join
-from csv import reader
 from scipy import stats
-from pprint import pprint # Data pretty printer
 import multiprocessing as mp
- 
+from os import listdir, stat, makedirs
+from os.path import isfile, join
 from collections import defaultdict
 from datetime import datetime as time
-from pandas.core.frame import DataFrame
 
-## inner classes
-from CSVHandler import reader 
 
 """ 
 ################################ ################################
 ################### GLOBAL VARIABLES ############################ 
 ################################ ################################ 
 """ 
-
-global filesMapper; filesMapper = defaultdict(lambda: list)
 
 class MultithreadedMatching():
     
@@ -49,12 +37,9 @@ class MultithreadedMatching():
         self.folderC = folderC
         self.k = k # minimal amount of equal numbers
         self.vectorsA = defaultdict(lambda: list)
-#       self.vectorsA = [{"filename": '', "id": '', "content": ''}]
-                
         self.vectorsB = defaultdict(lambda: list)
-        self.vectorsC = defaultdict(lambda: list)
+        self.vectorsC = []
         
-    
     def getFilesInFolder(self, folderName):
         """ Returens a list of a file names in a folder"""
         fileNames = [folderName + "//" + fileName for fileName in listdir(folderName) if isfile(join(folderName, fileName))]
@@ -73,41 +58,49 @@ class MultithreadedMatching():
     def similarityTesting(self):
         """ updates m.vectorsC with files from A that are similar to at least 1 file from B"""
         if (self.k > 0):
-            for vec_i in self.vectorsA.iteritems():
-                print "XXXXXXXXXXXXXX"
-                print vec_i[0], vec_i[1]
-                vec_i = self.validateRow(vec_i)
-                for j, vec_j in self.vectorsB.iteritems():
-                    vec_j = self.validateRow(vec_j)
+            for vec_i in self.vectorsA:
+                fn_vec_i, v_vec_i = self.validateRow(vec_i)
+                for vec_j in self.vectorsB:
+                    _ , v_vec_j = self.validateRow(vec_j)
                     # Vectors are ordered (ascending),
-                    if vec_i[0] > vec_j[-1]:
+                    if v_vec_i[0] > v_vec_j[-1]:
                         continue
-                    if vec_j[0] > vec_i[-1]:
+                    if v_vec_j[0] > v_vec_i[-1]:
                         continue
                     else:
                         # Check how many of equal numbers in both arrays
-                        _k = len(set(vec_i).intersection(set(vec_j)))
-                        print _k
-                        if (_k >= self.k): # if more than the minimum m.k
-                            
-                            print vec_i, i
-                            self.vectorsC.append(vec_i) 
+                        _k = len(set(v_vec_i).intersection(set(v_vec_j)))
+                        # if the intersection is more than the minimum m.k
+                        if (_k >= self.k): 
+                            self.vectorsC.append(fn_vec_i) 
                             # copy all vectors from "A", which are similar to at least 1 in "B"
                             break
-            print self.vectorsC
         else: 
             print "k, the minimal amount of equal numbers is set to zero. Nothing to do here.."
     
         return self.vectorsC
     
-    def validateRow(self, row):
+    def validateRow(self, rowDict):
         try:
-            row = row[0].split(',')
-            # convert all strings to ints, make sure all are numbers
-            row = map(int, row)
+            for key, value in rowDict.iteritems():
+                row = value[0].split(',')
+                # convert all strings to ints, make sure all are numbers
+                row = map(int, row)
         except ValueError:
             row = []
-        return row
+        return key, row
+    
+    def copyCSVFiles(self, dstdir):
+        
+        if (self.vectorsC):
+            try:
+                makedirs(dstdir) # create all directories, raise an error if it already exists
+            except:
+                pass
+            
+            for srcfile in self.vectorsC:
+                shutil.copy(srcfile, dstdir)
+        return
     
 def workerLoadFile(fileName):
     """ note: functions are only picklable if they are defined at the top-level of a module."""
@@ -137,7 +130,7 @@ def main():
     folderA="C://Users//nancy yacovzada//workspace//Cortica//input//A"
     folderB="C://Users//nancy yacovzada//workspace//Cortica//input//B"
     folderC="C://Users//nancy yacovzada//workspace//Cortica//input//C"
-    X=3
+    X=1
     
     m = MultithreadedMatching(folderA, folderB, folderC, k=X)
     
@@ -149,8 +142,13 @@ def main():
     
     m.similarityTesting()
     
-    for vec in m.vectorsA:
-        print "XXX"
+    m.copyCSVFiles(folderC)
+    
+    running_time = time.now() - running_time
+        
+    print("FINISH -----> " + str(time.now()) + " Total running time : %s " % str(running_time))
+        
+##############################
         
 if __name__ == '__main__':
     mp.freeze_support()
