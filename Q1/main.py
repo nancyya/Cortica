@@ -103,9 +103,14 @@ class MultithreadedMatching():
         return
     
 def workerLoadFile(fileName):
-    """ note: functions are only picklable if they are defined at the top-level of a module."""
+    """ 
+        Load the CSV files content with multithreading
+        note: 
+            This function is defined here since the pool methods use a queue.Queue to pass tasks to the worker processes. 
+            Everything that goes through the queue.Queue must be pickable, but functions are only picklable if they are defined at the top-level of a module.
+    """
     
-    vecs = {}#defaultdict(lambda: defaultdict(list))
+    vecs = {}
     print "Loading File: " + fileName
     with open(fileName, 'rt') as f:
         # read one line at a time from file
@@ -149,7 +154,7 @@ def main():
     print("FINISH -----> " + str(time.now()) + " Total running time : %s " % str(running_time))
         
 ##############################
-        
+       
 if __name__ == '__main__':
     mp.freeze_support()
     main()
