@@ -7,35 +7,51 @@ Created on Mar 22, 2016
 '''
 
 """
-################################ ################################
 ############################ IMPORTS ############################ 
-################################ ################################
 """ 
 from time import sleep
 import numpy as np
 from datetime import datetime as time
 
 """ 
-################################ ################################
 ################### GLOBAL VARIABLES ############################ 
-################################ ################################ 
 """ 
-# Using Sdictionary to represent rush hours time spans: 
-#    1. Every key in the dictionary represents a minute in a rush hour. For example, 15.00 is 3PM and 0.59 is 12:59AM.
-#    2. When the class is initialized, the dictionary is empty (there are no rush hours at all).
-#    3. A time span is added only once. If exists, not added to the dictionary. The containment ("not in") operation takes O(1).   
-#    4. isRushHour complexity - constant time access.
-#    5. addTimeSpan complexity - each "add" takes constant time access. Worst case rushHours is length 60*24=1440.
- 
+
+# Using rushHours as a Set() to represent rush hours time spans: 
+#    1. Every element in the set, acts like a key in a dictionary, represents a minute in a rush hour. 
+#        For example, "15.00" is 3PM and "0.59" is 12:59AM. 
+#        Values in the set vary from 0.00 to 24.00. 1440 possible values. no duplications.
+#    2. When the class is initialized, the set is empty (there are no rush hours at all).
+#    3. A time span is added only once. If exists, not added to the set. 
+#        The containment operation ("not in") takes O(1).   
+#    4. isRushHour() complexity - constant time access using the "in" operator.
+#    5. addTimeSpan() complexity - each "add" takes constant time access.   
+#    6. Size - worst case rushHours is length 60*24=1440.
+
+# Bonus question:
+#    How would your solution be different if we changed the definition of "time" to be an integer, representing the time of day in seconds? (answer in words)
+#    Answer: this solution supports the change in definition of "time" to seconds. Worst case the size of rushHours is 86,400. Additional approach is using "interval tree" (see: https://en.wikipedia.org/wiki/Interval_tree)  
+
 rushHours = set()
 
 def addTimeSpan(start_time, end_time):
-    """ receive time-spans that are defined as "Rush Hours" and stores them"""
-    if ( isValidTime(start_time) and isValidTime(end_time) ):
-        # add time-spans of rush hours
+    """ 
+    Receive time-span (start_time, end_time) that is defined as "Rush Hours" and stores them.
+        Parameters
+        ----------
+        start_time : str, in format "h.mm".
+        end_time  : str, in format "h.mm".
+         
+        Returns
+        ------- 
+        Void
+        """
+    if ( isValidTime(start_time) and isValidTime(end_time) and start_time <= end_time):
+        # Add time-span of rush hours
+        # Insert into "rushHours" all the minutes in the range of [start_time, end_time)
         for minute in np.arange(roundf(start_time), roundf(end_time), 0.01):
             minute = roundf(minute)
-            if minute not in rushHours and (minute%1 < 0.6):
+            if minute not in rushHours and (minute%1 < 0.6): # An hour has only 60 minute 
                 rushHours.add(minute)
     else:
         print "start_time:", start_time, "end_time:", end_time, " Not a valid time, behavior is not defined."  
@@ -43,7 +59,16 @@ def addTimeSpan(start_time, end_time):
     return 
 
 def isRushHour(time):
-    """ answer queries about a specific time of day - whether it is considered rush hour or not """
+    """ 
+    Answer queries about a specific time of day - whether it is considered a rush hour or not
+        Parameters
+        ----------
+        time : str, in format "h.mm".
+            
+        Returns
+        ------- 
+        isRushHour: boolean
+    """
     isRushHour = 0
     if isValidTime(time):
         if time in rushHours:
@@ -58,12 +83,16 @@ def isRushHour(time):
 def isValidTime(time):
     """ Time T (float) is a valid time of day if (T>=0.00 and T<24.00)"""
     isValid = 0
-    # check if float
+    # First, Check if float
     if(isStrFloat(time)):
+        # Take float with only precision 2 to represent "h.mm"
         time = roundf(time)
-        a = int(time)
-        b = roundf(time - a)
-        if (a>=0 and a<24 and b>=0.00 and b<0.60):
+        # Extract the hour
+        h = int(time)
+        # Extract the minutes
+        m = roundf(time - h)
+        # Validate
+        if (h >= 0 and h < 24 and m >= 0.00 and m < 0.60):
             isValid = 1
         
     return isValid
@@ -81,6 +110,7 @@ def roundf(f):
 ##############################
 
 def testInput():
+    """ A test method """
     isRushHour(3.00) #--> False 
     isRushHour(5.00) #--> False
     
@@ -112,6 +142,8 @@ def testInput():
     isRushHour(25.00) #--> Error
     isRushHour(-25.00) #--> Error
     
+    addTimeSpan(12.00, 8.00) # Not valid, start_time > end_time!
+    
     addTimeSpan(21.01, 21.01)
     isRushHour(21.01) #--> False
     addTimeSpan(21.01, 21.02)
@@ -120,7 +152,7 @@ def testInput():
     addTimeSpan(19, 19.05) #--> (transforms to (10.00, 10.05))
     isRushHour(19.00) #--> True
     
-    sleep(60)
+    ##sleep(60)
     
     addTimeSpan(0,24) # All day, 24:00 is not a valid time, behavior is not defined.
     isRushHour(0.00) #--> False, 24:00 is not a valid time, behavior is not defined.
